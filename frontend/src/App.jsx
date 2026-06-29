@@ -1,33 +1,54 @@
-import { useState } from "react";
-
+import { useState , useEffect } from "react";
+import "./App.css"
 function App()
 {
-  const [todos,setTodos] = useState([
-    {
-      id:1,
-      title: "Learn React",
-      completed : false
-    },
-    {
-      id:2,
-      title: "Learn Prisma",
-      completed : false
-    }
-
-  ])
+  const [todos,setTodos] = useState([])
   const [input, setInput] = useState("")
-  function handleAddTodo()
+
+  useEffect(()=>{
+    async function loadTodos()
+    {
+      try{
+        const response = await fetch("http://localhost:3000/api/todos");
+        const data  = await response.json()
+
+        setTodos (data.todos)
+
+      }
+      catch(error)
+      {
+        console.error("Error loading todos from backend : ",error);
+      }
+    }
+    loadTodos();
+  },[])
+
+
+
+  async function handleAddTodo()
   {
     if (input.trim() === "") return;
 
-    const newToDo = {
-      id : Date.now(),
-      title : input.trim(),
-      completed : false
-    };
+    try 
+    {
+      const response = await fetch("http://localhost:3000/api/todos",{
+        method : "POST",
+        headers : 
+        {
+          "Content-type" : "application/json"
+        },
+        body : JSON.stringify({title: input.trim()})
+      })
 
-    setTodos([...todos,newToDo]);
-    setInput("");
+      const newToDoFromDatabase = await response.json()
+
+      setTodos([...todos,newToDoFromDatabase])
+      setInput("")
+    }
+    catch(error)
+    {
+      console.error(error)
+    }
   }
 
   function handleToggleTodo(id)
@@ -45,6 +66,14 @@ function App()
     setTodos(updatedTodos)
   }
 
+  function handleDeleteTodo(id)
+  {
+    const filteredTodos = todos.filter((todo) => 
+      todo.id !== id
+    )
+    setTodos(filteredTodos);
+  }
+    
   return(
     <div>
       <h1>My Tasks!</h1>
@@ -61,13 +90,18 @@ function App()
         {
           todos.map((todo) => (
             <li key={todo.id}>
+              <span style = {{color : todo.completed ? "grey" : "black" }}>
               {todo.title}
+              </span>
               <input
                 type="checkbox"
                 checked = {todo.completed}
                 onChange = {() => handleToggleTodo(todo.id)}
-              >
-              </input>
+              />
+              <button onClick = {()=> handleDeleteTodo(todo.id)}>
+                Delete
+              </button>
+              
             </li>
           ))
         }
